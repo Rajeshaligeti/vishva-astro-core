@@ -57,6 +57,38 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Space Theme Colors
+        space: {
+          deep: "hsl(var(--space-deep))",
+          purple: "hsl(var(--space-purple))",
+          blue: "hsl(var(--space-blue))",
+        },
+        neon: {
+          cyan: "hsl(var(--neon-cyan))",
+          magenta: "hsl(var(--neon-magenta))",
+          electric: "hsl(var(--neon-electric))",
+          green: "hsl(var(--neon-green))",
+        },
+        holo: {
+          base: "hsl(var(--holo-base))",
+          border: "hsl(var(--holo-border))",
+          glow: "hsl(var(--holo-glow))",
+        },
+      },
+      fontFamily: {
+        'orbitron': ['Orbitron', 'monospace'],
+        'exo': ['Exo 2', 'sans-serif'],
+      },
+      backgroundImage: {
+        'gradient-space': 'var(--gradient-space)',
+        'gradient-nebula': 'var(--gradient-nebula)',
+        'gradient-neon': 'var(--gradient-neon)',
+        'gradient-holo': 'var(--gradient-holo)',
+      },
+      boxShadow: {
+        'neon': 'var(--shadow-neon)',
+        'magenta': 'var(--shadow-magenta)',
+        'holo': 'var(--shadow-holo)',
       },
       borderRadius: {
         lg: "var(--radius)",
