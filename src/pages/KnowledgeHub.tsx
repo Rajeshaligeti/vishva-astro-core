@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Filter, Database, ExternalLink, Loader2, Globe, Microscope } from 'lucide-react';
+import { Search, Filter, Database, ExternalLink, Loader2, Globe, Microscope, BarChart3, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +39,7 @@ export default function KnowledgeHub() {
   const [ncbiData, setNcbiData] = useState<DataItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'nasa' | 'ncbi' | 'all'>('all');
+  const [showVisualizations, setShowVisualizations] = useState(true);
 
   const fetchNASAData = async () => {
     try {
@@ -164,7 +165,7 @@ export default function KnowledgeHub() {
 
           {/* Search and Filters */}
           <div className="holo-panel rounded-xl p-6 mb-8">
-            <div className="flex flex-col lg:flex-row gap-4 items-center">
+            <div className="flex flex-col lg:flex-row gap-4 items-center mb-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neon-cyan w-5 h-5" />
                 <Input
@@ -184,6 +185,25 @@ export default function KnowledgeHub() {
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
               </HolographicButton>
+
+              <Button
+                variant="outline"
+                size="default"
+                onClick={() => setShowVisualizations(!showVisualizations)}
+                className="border-holo-border hover:border-neon-cyan bg-holo-base w-full lg:w-auto"
+              >
+                {showVisualizations ? (
+                  <>
+                    <EyeOff className="w-4 h-4 mr-2" />
+                    Hide Visualizations
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4 mr-2" />
+                    Show Visualizations
+                  </>
+                )}
+              </Button>
             </div>
 
             {/* Category Filters */}
@@ -206,17 +226,21 @@ export default function KnowledgeHub() {
       </div>
 
       {/* Visualization Dashboard */}
-      <DataDashboard 
-        nasaCount={nasaData.length}
-        ncbiCount={ncbiData.length}
-        categoryData={categoryData}
-      />
+      {showVisualizations && (
+        <>
+          <DataDashboard 
+            nasaCount={nasaData.length}
+            ncbiCount={ncbiData.length}
+            categoryData={categoryData}
+          />
 
-      {/* Knowledge Graph */}
-      {data.length > 0 && (
-        <div className="mb-8">
-          <KnowledgeGraph data={data} />
-        </div>
+          {/* Knowledge Graph */}
+          {data.length > 0 && (
+            <div className="mb-8">
+              <KnowledgeGraph data={data} />
+            </div>
+          )}
+        </>
       )}
 
       {/* Data Source Tabs */}
