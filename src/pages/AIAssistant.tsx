@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useRef, useEffect } from 'react';
 import { StarfieldBackground } from '@/components/StarfieldBackground';
 import { HolographicButton } from '@/components/HolographicButton';
+import { HolographicOrb } from '@/components/HolographicOrb';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, User, Loader2, Sparkles } from 'lucide-react';
+import { Bot, Send, User, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Message {
@@ -26,6 +26,17 @@ export default function AIAssistant() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Auto-scroll to bottom when new messages arrive
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, [messages]);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -38,32 +49,92 @@ export default function AIAssistant() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const messageText = input;
     setInput('');
     setIsLoading(true);
 
+    // Add placeholder assistant message for streaming
+    const assistantId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date()
+    }]);
+
     try {
-      const { data, error } = await supabase.functions.invoke('ai-assistant', {
-        body: { 
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`;
+      
+      const response = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
           messages: [
             ...messages.map(m => ({ role: m.role, content: m.content })),
-            { role: 'user', content: input }
-          ]
-        }
+            { role: 'user', content: messageText }
+          ],
+          stream: true
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to get response');
+      }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.response || 'I apologize, but I encountered an issue processing your request.',
-        timestamp: new Date()
-      };
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = '';
+      let accumulatedContent = '';
 
-      setMessages(prev => [...prev, assistantMessage]);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            
+            if (content) {
+              accumulatedContent += content;
+              
+              // Update the last assistant message with accumulated content
+              setMessages(prev => prev.map(msg => 
+                msg.id === assistantId 
+                  ? { ...msg, content: accumulatedContent }
+                  : msg
+              ));
+            }
+          } catch (e) {
+            // Incomplete JSON, put it back
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
+        }
+      }
+
     } catch (error) {
       console.error('AI Assistant error:', error);
       toast.error('Failed to get AI response');
+      
+      // Remove the placeholder message on error
+      setMessages(prev => prev.filter(msg => msg.id !== assistantId));
     } finally {
       setIsLoading(false);
     }
@@ -87,8 +158,8 @@ export default function AIAssistant() {
           <Card className="holo-panel border-holo-border h-[600px] flex flex-col">
             <CardHeader className="border-b border-holo-border">
               <CardTitle className="flex items-center gap-3 text-neon-cyan">
-                <div className="w-10 h-10 rounded-full bg-gradient-neon p-2 pulse-orb">
-                  <Bot className="w-full h-full text-background" />
+                <div className="relative">
+                  <HolographicOrb isThinking={isLoading} />
                 </div>
                 <span className="font-orbitron">VISHWA-AI</span>
                 <Sparkles className="w-5 h-5 text-neon-magenta" />
@@ -96,7 +167,7 @@ export default function AIAssistant() {
             </CardHeader>
             
             <CardContent className="flex-1 flex flex-col p-0">
-              <ScrollArea className="flex-1 p-6">
+              <ScrollArea className="flex-1 p-6" ref={scrollAreaRef}>
                 <div className="space-y-4">
                   {messages.map((message) => (
                     <div
@@ -127,19 +198,6 @@ export default function AIAssistant() {
                     </div>
                   ))}
                   
-                  {isLoading && (
-                    <div className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-neon-cyan text-background flex items-center justify-center">
-                        <Bot className="w-4 h-4" />
-                      </div>
-                      <div className="bg-holo-base border border-holo-border rounded-lg p-4">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />
-                          <span className="text-foreground/70 font-exo">VISHWA-AI is thinking...</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </ScrollArea>
               

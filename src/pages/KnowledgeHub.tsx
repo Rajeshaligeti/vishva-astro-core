@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StarfieldBackground } from '@/components/StarfieldBackground';
 import { HolographicButton } from '@/components/HolographicButton';
+import { DataDashboard } from '@/components/DataDashboard';
+import { KnowledgeGraph } from '@/components/KnowledgeGraph';
 import { toast } from 'sonner';
 
 interface DataItem {
@@ -133,6 +135,17 @@ export default function KnowledgeHub() {
 
   const data = getFilteredData();
 
+  // Calculate category data for dashboard
+  const categoryData = categories
+    .filter(cat => cat.value !== '')
+    .map(cat => ({
+      name: cat.name,
+      value: data.filter(item => 
+        item.category?.includes(cat.value) || 
+        item.source.toLowerCase().includes(cat.value)
+      ).length
+    }));
+
   return (
     <div className="min-h-screen relative">
       <StarfieldBackground />
@@ -187,12 +200,26 @@ export default function KnowledgeHub() {
                   }
                 >
                   {category.name}
-                </Button>
-              ))}
-            </div>
-          </div>
+            </Button>
+          ))}
+        </div>
+      </div>
 
-          {/* Data Source Tabs */}
+      {/* Visualization Dashboard */}
+      <DataDashboard 
+        nasaCount={nasaData.length}
+        ncbiCount={ncbiData.length}
+        categoryData={categoryData}
+      />
+
+      {/* Knowledge Graph */}
+      {data.length > 0 && (
+        <div className="mb-8">
+          <KnowledgeGraph data={data} />
+        </div>
+      )}
+
+      {/* Data Source Tabs */}
           <div className="flex gap-4 mb-8">
             <Button
               variant={activeTab === 'all' ? "default" : "outline"}

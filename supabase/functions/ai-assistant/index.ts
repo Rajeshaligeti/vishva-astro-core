@@ -13,8 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, type = 'chat' } = await req.json();
-    console.log('AI Assistant request:', { type, messageCount: messages?.length });
+    const { messages, stream = false } = await req.json();
+    console.log('AI Assistant request:', { stream, messageCount: messages?.length });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -40,45 +40,45 @@ Provide accurate, scientific responses with a futuristic, space-exploration tone
         { role: "system", content: systemPrompt },
         ...messages
       ],
-      temperature: 0.7,
-      max_tokens: 1000,
+      stream
     };
 
-    // Add tool calling for specific request types
-    if (type === "suggest") {
+    // Add tool calling only for non-streaming requests
+    if (!stream) {
       body.tools = [
         {
           type: "function",
-          name: "suggest_experiments",
-          description: "Suggest 3-5 space biology experiments based on user input.",
-          parameters: {
-            type: "object",
-            properties: {
-              experiments: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    title: { type: "string" },
-                    description: { type: "string" },
-                    category: { type: "string", enum: ["microgravity", "radiation", "life_support", "astrobiology", "space_medicine"] },
-                    difficulty: { type: "string", enum: ["beginner", "intermediate", "advanced"] },
-                    duration: { type: "string" }
-                  },
-                  required: ["title", "description", "category", "difficulty"],
-                  additionalProperties: false
+          function: {
+            name: "suggest_experiments",
+            description: "Suggest 3-5 space biology experiments based on user input.",
+            parameters: {
+              type: "object",
+              properties: {
+                experiments: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      description: { type: "string" },
+                      category: { type: "string", enum: ["microgravity", "radiation", "life_support", "astrobiology", "space_medicine"] },
+                      difficulty: { type: "string", enum: ["beginner", "intermediate", "advanced"] },
+                      duration: { type: "string" }
+                    },
+                    required: ["title", "description", "category", "difficulty"],
+                    additionalProperties: false
+                  }
                 }
-              }
-            },
-            required: ["experiments"],
-            additionalProperties: false
+              },
+              required: ["experiments"],
+              additionalProperties: false
+            }
           }
         }
       ];
-      body.tool_choice = { type: "function", function: { name: "suggest_experiments" } };
     }
 
-    console.log('Calling Lovable AI with model:', body.model);
+    console.log('Calling Lovable AI with model:', body.model, 'stream:', stream);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -114,6 +114,13 @@ Provide accurate, scientific responses with a futuristic, space-exploration tone
       }
 
       throw new Error(`AI Gateway error: ${response.status} ${errorText}`);
+    }
+
+    // Handle streaming response
+    if (stream) {
+      return new Response(response.body, {
+        headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+      });
     }
 
     const data = await response.json();
