@@ -145,7 +145,7 @@ export default function AIAssistant() {
       <StarfieldBackground />
       
       <div className="relative z-10 pt-20 px-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-4xl md:text-6xl font-orbitron font-bold text-gradient-neon mb-4">
               VISHWA-AI Assistant
@@ -155,16 +155,49 @@ export default function AIAssistant() {
             </p>
           </div>
 
-          <Card className="holo-panel border-holo-border h-[600px] flex flex-col">
-            <CardHeader className="border-b border-holo-border">
-              <CardTitle className="flex items-center gap-3 text-neon-cyan">
-                <div className="relative">
-                  <HolographicOrb isThinking={isLoading} />
+          <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
+            {/* Holographic Orb Container */}
+            <div className="holo-panel border-holo-border p-8 flex flex-col items-center justify-center min-h-[400px] lg:sticky lg:top-24">
+              <div className="mb-6">
+                <HolographicOrb isThinking={isLoading} />
+              </div>
+              <div className="text-center">
+                <h3 className="text-2xl font-orbitron text-neon-cyan mb-2 flex items-center justify-center gap-2">
+                  VISHWA-AI
+                  <Sparkles className="w-5 h-5 text-neon-magenta" />
+                </h3>
+                <p className="text-sm text-foreground/60 font-exo mb-4">
+                  {isLoading ? 'Processing your request...' : 'Ready to assist'}
+                </p>
+                <div className="w-full bg-holo-base border border-holo-border rounded-lg p-3">
+                  <div className="text-xs text-foreground/50 font-exo space-y-1">
+                    <div className="flex justify-between">
+                      <span>Status:</span>
+                      <span className={isLoading ? 'text-neon-magenta' : 'text-neon-cyan'}>
+                        {isLoading ? 'Active' : 'Online'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Model:</span>
+                      <span className="text-neon-cyan">Gemini 2.5</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Messages:</span>
+                      <span className="text-neon-cyan">{messages.length}</span>
+                    </div>
+                  </div>
                 </div>
-                <span className="font-orbitron">VISHWA-AI</span>
-                <Sparkles className="w-5 h-5 text-neon-magenta" />
-              </CardTitle>
-            </CardHeader>
+              </div>
+            </div>
+
+            {/* Chat Interface */}
+            <Card className="holo-panel border-holo-border h-[600px] flex flex-col">
+              <CardHeader className="border-b border-holo-border">
+                <CardTitle className="flex items-center gap-3 text-neon-cyan">
+                  <Bot className="w-8 h-8" />
+                  <span className="font-orbitron">Chat Interface</span>
+                </CardTitle>
+              </CardHeader>
             
             <CardContent className="flex-1 flex flex-col p-0">
               <ScrollArea className="flex-1 p-6" ref={scrollAreaRef}>
@@ -223,6 +256,7 @@ export default function AIAssistant() {
               </div>
             </CardContent>
           </Card>
+          </div>
         </div>
       </div>
     </div>
