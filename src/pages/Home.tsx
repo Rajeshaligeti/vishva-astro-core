@@ -1,7 +1,5 @@
 import { Link } from 'react-router-dom';
 import { StarfieldBackground } from '@/components/StarfieldBackground';
-import { ParticleSystem } from '@/components/ParticleSystem';
-import { FloatingElements } from '@/components/FloatingElements';
 import { HolographicButton } from '@/components/HolographicButton';
 import { 
   BookOpen, 
@@ -21,9 +19,6 @@ export default function Home() {
       
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center px-6">
-        <ParticleSystem count={60} />
-        <FloatingElements />
-        
         <div className="max-w-4xl mx-auto text-center z-10">
           {/* Main Heading */}
           <div className="mb-8 floating">
