@@ -1,383 +1,80 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Search, Filter, Database, ExternalLink, Loader2, Globe, Microscope, BarChart3, Eye, EyeOff } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { BookOpen, GitBranch, BarChart3, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { StarfieldBackground } from '@/components/StarfieldBackground';
-import { HolographicButton } from '@/components/HolographicButton';
-import { DataDashboard } from '@/components/DataDashboard';
-import { KnowledgeGraph } from '@/components/KnowledgeGraph';
-import { toast } from 'sonner';
+import { FiltersPanel } from '@/components/knowledge-hub/FiltersPanel';
+import { ArticlesList } from '@/components/knowledge-hub/ArticlesList';
+import { RelationshipsView } from '@/components/knowledge-hub/RelationshipsView';
+import { InsightsView } from '@/components/knowledge-hub/InsightsView';
+import { GraphModal } from '@/components/knowledge-hub/GraphModal';
+import { useFetchArticles, DataItem } from '@/hooks/useFetchArticles';
+import { usePagination } from '@/hooks/usePagination';
 
-interface DataItem {
-  id?: string;
-  title: string;
-  description?: string;
-  source: string;
-  type: string;
-  url?: string;
-  authors?: string;
-  year?: string;
-  category?: string;
-}
-
-const categories = [
-  { name: 'All', value: '' },
-  { name: 'NASA Missions', value: 'nasa' },
-  { name: 'Astrobiology', value: 'astrobiology' },
-  { name: 'Microgravity', value: 'microgravity' },
-  { name: 'Mars Research', value: 'mars' },
-  { name: 'Space Medicine', value: 'space medicine' },
-];
+type TabType = 'articles' | 'relationships' | 'insights';
 
 export default function KnowledgeHub() {
+  const [activeTab, setActiveTab] = useState<TabType>('articles');
   const [searchTerm, setSearchTerm] = useState('space biology');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [nasaData, setNasaData] = useState<DataItem[]>([]);
-  const [ncbiData, setNcbiData] = useState<DataItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'nasa' | 'ncbi' | 'all'>('all');
-  const [showVisualizations, setShowVisualizations] = useState(true);
+  const [selectedDataset, setSelectedDataset] = useState<'all' | 'nasa' | 'ncbi'>('all');
+  const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(false);
+  const [graphModalOpen, setGraphModalOpen] = useState(false);
+  const [focusedArticle, setFocusedArticle] = useState<DataItem | null>(null);
 
-  const fetchNASAData = async (category: string = '') => {
-    try {
-      setLoading(true);
-      
-      // Determine search term based on category
-      let searchQuery = 'space biology';
-      if (category === 'astrobiology') searchQuery = 'astrobiology';
-      if (category === 'microgravity') searchQuery = 'microgravity';
-      if (category === 'mars') searchQuery = 'mars biology';
-      if (category === 'space medicine') searchQuery = 'space medicine';
-      
-      const { data, error } = await supabase.functions.invoke('fetch-nasa-data', {
-        body: { 
-          endpoint: 'planetary/apod',
-          limit: 12,
-          search: searchQuery
-        }
-      });
+  const { nasaData, ncbiData, loading, handleSearch } = useFetchArticles(searchTerm, selectedCategory, selectedDataset);
+  const allData = [...nasaData, ...ncbiData];
+  const { paginatedData, currentPage, totalPages, goToPage, nextPage, prevPage, reset: resetPagination } = usePagination(allData, 12);
 
-      if (error) throw error;
+  useEffect(() => { resetPagination(); }, [selectedCategory, selectedDataset, searchTerm, resetPagination]);
 
-      const transformedData = (data.data || []).map((item: any) => ({
-        id: item.date || Math.random().toString(),
-        title: item.title || 'NASA Data',
-        description: item.explanation || item.description || 'NASA space data',
-        source: 'NASA',
-        type: 'space-data',
-        url: item.url || item.hdurl,
-        category: category || 'nasa'
-      }));
-
-      setNasaData(transformedData);
-    } catch (error) {
-      console.error('Error fetching NASA data:', error);
-      toast.error('Failed to fetch NASA data');
-    }
-  };
-
-  const fetchNCBIData = async (category: string = '') => {
-    try {
-      setLoading(true);
-      
-      // Build search query based on category
-      let searchQuery = searchTerm;
-      if (category) {
-        if (category === 'nasa') {
-          searchQuery = `${searchTerm} space missions`;
-        } else if (category === 'astrobiology') {
-          searchQuery = `${searchTerm} astrobiology extremophiles`;
-        } else if (category === 'microgravity') {
-          searchQuery = `${searchTerm} microgravity weightlessness`;
-        } else if (category === 'mars') {
-          searchQuery = `${searchTerm} mars exploration`;
-        } else if (category === 'space medicine') {
-          searchQuery = `${searchTerm} space medicine astronaut health`;
-        } else {
-          searchQuery = `${searchTerm} ${category}`;
-        }
-      }
-      
-      const { data, error } = await supabase.functions.invoke('fetch-ncbi-data', {
-        body: { 
-          term: searchQuery,
-          retmax: 15
-        }
-      });
-
-      if (error) throw error;
-
-      const transformedData = (data.data || []).map((item: any) => ({
-        id: item.pmid || Math.random().toString(),
-        title: item.title,
-        description: item.abstract,
-        source: 'NCBI PubMed',
-        type: 'research-article',
-        url: item.url,
-        authors: item.authors,
-        year: item.year,
-        category: category || 'research'
-      }));
-
-      setNcbiData(transformedData);
-    } catch (error) {
-      console.error('Error fetching NCBI data:', error);
-      toast.error('Failed to fetch NCBI data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchNASAData(selectedCategory);
-    fetchNCBIData(selectedCategory);
-  }, [selectedCategory]);
-
-  const handleSearch = async () => {
-    await fetchNASAData(selectedCategory);
-    await fetchNCBIData(selectedCategory);
-  };
-
-  const handleCategoryChange = (category: string) => {
-    setSelectedCategory(category);
-    toast.info(`Fetching ${category || 'all'} data...`);
-  };
-
-  const getFilteredData = () => {
-    let allData = [...nasaData, ...ncbiData];
-    
-    if (activeTab === 'nasa') allData = nasaData;
-    if (activeTab === 'ncbi') allData = ncbiData;
-    
-    if (selectedCategory) {
-      allData = allData.filter(item => 
-        item.category?.includes(selectedCategory) || 
-        item.source.toLowerCase().includes(selectedCategory)
-      );
-    }
-    
-    return allData;
-  };
-
-  const data = getFilteredData();
-
-  // Calculate category data for dashboard
-  const categoryData = categories
-    .filter(cat => cat.value !== '')
-    .map(cat => ({
-      name: cat.name,
-      value: data.filter(item => 
-        item.category?.includes(cat.value) || 
-        item.source.toLowerCase().includes(cat.value)
-      ).length
-    }));
+  const handleOpenRelationships = useCallback((item: DataItem) => {
+    setFocusedArticle(item);
+    setGraphModalOpen(true);
+  }, []);
 
   return (
     <div className="min-h-screen relative">
       <StarfieldBackground />
-      
       <div className="relative z-10 pt-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-6xl font-orbitron font-bold text-gradient-neon mb-6">
-              Knowledge Hub
-            </h1>
-            <p className="text-xl text-foreground/80 font-exo max-w-3xl mx-auto">
-              Explore the vast repository of space biology research from NASA missions and NCBI databases
-            </p>
-          </div>
+        <div className="max-w-[1600px] mx-auto">
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
+            <h1 className="text-4xl md:text-6xl font-orbitron font-bold text-gradient-neon mb-6">Knowledge Hub</h1>
+            <p className="text-xl text-foreground/80 font-exo max-w-3xl mx-auto">Explore space biology research from NASA and NCBI</p>
+          </motion.div>
 
-          {/* Search and Filters */}
-          <div className="holo-panel rounded-xl p-6 mb-8">
-            <div className="flex flex-col lg:flex-row gap-4 items-center mb-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neon-cyan w-5 h-5" />
-                <Input
-                  placeholder="Search space biology research..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-background/50 border-holo-border focus:border-neon-cyan"
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                />
-              </div>
-              
-              <HolographicButton 
-                onClick={handleSearch} 
-                icon={Search}
-                disabled={loading}
-                className="w-full lg:w-auto"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
-              </HolographicButton>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2 mb-8 justify-center flex-wrap">
+            <Button variant={activeTab === 'articles' ? 'default' : 'outline'} onClick={() => setActiveTab('articles')} className={activeTab === 'articles' ? 'bg-neon-cyan text-background' : 'border-holo-border'}>
+              <BookOpen className="w-4 h-4 mr-2" />Articles
+            </Button>
+            <Button variant={activeTab === 'relationships' ? 'default' : 'outline'} onClick={() => setActiveTab('relationships')} className={activeTab === 'relationships' ? 'bg-neon-cyan text-background' : 'border-holo-border'}>
+              <GitBranch className="w-4 h-4 mr-2" />Relationships
+            </Button>
+            <Button variant={activeTab === 'insights' ? 'default' : 'outline'} onClick={() => setActiveTab('insights')} className={activeTab === 'insights' ? 'bg-neon-cyan text-background' : 'border-holo-border'}>
+              <BarChart3 className="w-4 h-4 mr-2" />Insights
+            </Button>
+          </motion.div>
 
-              <Button
-                variant="outline"
-                size="default"
-                onClick={() => setShowVisualizations(!showVisualizations)}
-                className="border-holo-border hover:border-neon-cyan bg-holo-base w-full lg:w-auto"
-              >
-                {showVisualizations ? (
-                  <>
-                    <EyeOff className="w-4 h-4 mr-2" />
-                    Hide Visualizations
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-4 h-4 mr-2" />
-                    Show Visualizations
-                  </>
-                )}
+          <div className="flex gap-6 relative">
+            <div className="hidden lg:block">
+              <FiltersPanel searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} selectedDataset={selectedDataset} setSelectedDataset={setSelectedDataset} onSearch={handleSearch} isCollapsed={isFiltersCollapsed} onToggleCollapse={() => setIsFiltersCollapsed(!isFiltersCollapsed)} loading={loading} />
+            </div>
+            <div className="lg:hidden fixed bottom-6 right-6 z-40">
+              <Button size="icon" onClick={() => setIsFiltersCollapsed(!isFiltersCollapsed)} className="w-14 h-14 rounded-full bg-gradient-neon shadow-neon">
+                <Filter className="w-6 h-6" />
               </Button>
             </div>
-
-            {/* Category Filters */}
-            <div className="mt-4 flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <Button
-                  key={category.value}
-                  variant={selectedCategory === category.value ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleCategoryChange(category.value)}
-                  className={selectedCategory === category.value ? 
-                    "bg-neon-cyan text-background hover:bg-neon-cyan/80" : 
-                    "border-holo-border hover:border-neon-cyan"
-                  }
-                >
-                  {category.name}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      {/* Visualization Dashboard */}
-      {showVisualizations && (
-        <>
-          <DataDashboard 
-            nasaCount={nasaData.length}
-            ncbiCount={ncbiData.length}
-            categoryData={categoryData}
-          />
-
-          {/* Knowledge Graph */}
-          {data.length > 0 && (
-            <div className="mb-8">
-              <KnowledgeGraph data={data} />
+            <div className="flex-1 min-w-0">
+              <motion.div key={activeTab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
+                {activeTab === 'articles' && <ArticlesList articles={paginatedData} loading={loading} currentPage={currentPage} totalPages={totalPages} onNextPage={nextPage} onPrevPage={prevPage} onGoToPage={goToPage} onOpenRelationships={handleOpenRelationships} />}
+                {activeTab === 'relationships' && <RelationshipsView data={allData} />}
+                {activeTab === 'insights' && <InsightsView nasaData={nasaData} ncbiData={ncbiData} />}
+              </motion.div>
             </div>
-          )}
-        </>
-      )}
-
-      {/* Data Source Tabs */}
-          <div className="flex gap-4 mb-8">
-            <Button
-              variant={activeTab === 'all' ? "default" : "outline"}
-              onClick={() => setActiveTab('all')}
-              className={activeTab === 'all' ? 
-                "bg-neon-cyan text-background" : 
-                "border-holo-border hover:border-neon-cyan"
-              }
-            >
-              <Database className="w-4 h-4 mr-2" />
-              All Sources ({data.length})
-            </Button>
-            <Button
-              variant={activeTab === 'nasa' ? "default" : "outline"}
-              onClick={() => setActiveTab('nasa')}
-              className={activeTab === 'nasa' ? 
-                "bg-neon-cyan text-background" : 
-                "border-holo-border hover:border-neon-cyan"
-              }
-            >
-              <Globe className="w-4 h-4 mr-2" />
-              NASA ({nasaData.length})
-            </Button>
-            <Button
-              variant={activeTab === 'ncbi' ? "default" : "outline"}
-              onClick={() => setActiveTab('ncbi')}
-              className={activeTab === 'ncbi' ? 
-                "bg-neon-cyan text-background" : 
-                "border-holo-border hover:border-neon-cyan"
-              }
-            >
-              <Microscope className="w-4 h-4 mr-2" />
-              NCBI ({ncbiData.length})
-            </Button>
           </div>
-
-          {/* Results Grid */}
-          {loading && data.length === 0 ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="text-center">
-                <Loader2 className="w-12 h-12 animate-spin text-neon-cyan mx-auto mb-4" />
-                <p className="text-foreground/70 font-exo">Searching cosmic databases...</p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {data.map((item, index) => (
-                <Card key={item.id || index} className="holo-panel hover-scale border-holo-border">
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <CardTitle className="text-lg font-orbitron font-semibold text-foreground line-clamp-2">
-                        {item.title}
-                      </CardTitle>
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs whitespace-nowrap ${
-                          item.source === 'NASA' ? 'border-neon-cyan text-neon-cyan' : 'border-neon-magenta text-neon-magenta'
-                        }`}
-                      >
-                        {item.source}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-foreground/70 font-exo text-sm mb-4 line-clamp-3">
-                      {item.description}
-                    </p>
-                    
-                    {item.authors && (
-                      <p className="text-xs text-foreground/60 mb-2">
-                        <strong>Authors:</strong> {item.authors}
-                      </p>
-                    )}
-                    
-                    {item.year && (
-                      <p className="text-xs text-foreground/60 mb-4">
-                        <strong>Year:</strong> {item.year}
-                      </p>
-                    )}
-                    
-                    {item.url && (
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-neon-cyan hover:text-neon-magenta transition-colors"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span className="text-sm font-exo">View Source</span>
-                      </a>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {data.length === 0 && !loading && (
-            <div className="text-center py-20">
-              <Database className="w-16 h-16 text-neon-cyan/30 mx-auto mb-4" />
-              <h3 className="text-xl font-orbitron text-foreground/70 mb-2">No Results Found</h3>
-              <p className="text-foreground/50 font-exo">Try adjusting your search terms or category filters</p>
-            </div>
-          )}
         </div>
       </div>
+      <GraphModal isOpen={graphModalOpen} onClose={() => { setGraphModalOpen(false); setFocusedArticle(null); }} focusedArticle={focusedArticle} allData={allData} />
     </div>
   );
 }
