@@ -1,4 +1,7 @@
 import { Link } from 'react-router-dom';
+import { StarfieldBackground } from '@/components/StarfieldBackground';
+import { ParticleSystem } from '@/components/ParticleSystem';
+import { FloatingElements } from '@/components/FloatingElements';
 import { HolographicButton } from '@/components/HolographicButton';
 import { 
   BookOpen, 
@@ -14,12 +17,16 @@ import {
 export default function Home() {
   return (
     <div className="min-h-screen relative overflow-hidden">
+      <StarfieldBackground />
+      
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center px-6">
+      <section className="relative min-h-screen flex items-center justify-center px-6 parallax-section">
+        <ParticleSystem count={60} />
+        <FloatingElements />
         
         <div className="max-w-4xl mx-auto text-center z-10">
           {/* Main Heading */}
-          <div className="mb-8">
+          <div className="mb-8 floating">
             <h1 className="text-5xl md:text-7xl font-orbitron font-bold text-gradient-neon mb-4 tracking-wider">
               VISHWA
             </h1>
@@ -32,7 +39,7 @@ export default function Home() {
           </div>
 
           {/* Subheading */}
-          <div className="mb-12">
+          <div className="mb-12 floating-delayed">
             <p className="text-lg md:text-xl text-foreground/80 font-exo max-w-3xl mx-auto leading-relaxed">
               Cutting-edge research platform combining AI-powered experiments, 
               real-time simulations, and comprehensive biological databases to 

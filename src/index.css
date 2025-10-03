@@ -237,6 +237,15 @@ Deep space colors: dark blues, purples, blacks with neon cyan and magenta highli
     border-radius: 50%;
     animation: particle-float 15s infinite linear;
   }
+
+  /* Parallax Scrolling Effect */
+  .parallax-section {
+    transform-style: preserve-3d;
+  }
+  
+  .parallax-section > * {
+    transform: translateZ(0);
+  }
 }
 
 @layer utilities {
