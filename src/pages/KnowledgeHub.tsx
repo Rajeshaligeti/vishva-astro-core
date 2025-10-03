@@ -41,13 +41,22 @@ export default function KnowledgeHub() {
   const [activeTab, setActiveTab] = useState<'nasa' | 'ncbi' | 'all'>('all');
   const [showVisualizations, setShowVisualizations] = useState(true);
 
-  const fetchNASAData = async () => {
+  const fetchNASAData = async (category: string = '') => {
     try {
       setLoading(true);
+      
+      // Determine search term based on category
+      let searchQuery = 'space biology';
+      if (category === 'astrobiology') searchQuery = 'astrobiology';
+      if (category === 'microgravity') searchQuery = 'microgravity';
+      if (category === 'mars') searchQuery = 'mars biology';
+      if (category === 'space medicine') searchQuery = 'space medicine';
+      
       const { data, error } = await supabase.functions.invoke('fetch-nasa-data', {
         body: { 
           endpoint: 'planetary/apod',
-          limit: 12
+          limit: 12,
+          search: searchQuery
         }
       });
 
@@ -60,7 +69,7 @@ export default function KnowledgeHub() {
         source: 'NASA',
         type: 'space-data',
         url: item.url || item.hdurl,
-        category: 'nasa'
+        category: category || 'nasa'
       }));
 
       setNasaData(transformedData);
@@ -70,10 +79,27 @@ export default function KnowledgeHub() {
     }
   };
 
-  const fetchNCBIData = async () => {
+  const fetchNCBIData = async (category: string = '') => {
     try {
       setLoading(true);
-      const searchQuery = selectedCategory ? `${searchTerm} ${selectedCategory}` : searchTerm;
+      
+      // Build search query based on category
+      let searchQuery = searchTerm;
+      if (category) {
+        if (category === 'nasa') {
+          searchQuery = `${searchTerm} space missions`;
+        } else if (category === 'astrobiology') {
+          searchQuery = `${searchTerm} astrobiology extremophiles`;
+        } else if (category === 'microgravity') {
+          searchQuery = `${searchTerm} microgravity weightlessness`;
+        } else if (category === 'mars') {
+          searchQuery = `${searchTerm} mars exploration`;
+        } else if (category === 'space medicine') {
+          searchQuery = `${searchTerm} space medicine astronaut health`;
+        } else {
+          searchQuery = `${searchTerm} ${category}`;
+        }
+      }
       
       const { data, error } = await supabase.functions.invoke('fetch-ncbi-data', {
         body: { 
@@ -93,7 +119,7 @@ export default function KnowledgeHub() {
         url: item.url,
         authors: item.authors,
         year: item.year,
-        category: 'research'
+        category: category || 'research'
       }));
 
       setNcbiData(transformedData);
@@ -106,16 +132,18 @@ export default function KnowledgeHub() {
   };
 
   useEffect(() => {
-    fetchNASAData();
-    fetchNCBIData();
-  }, []);
+    fetchNASAData(selectedCategory);
+    fetchNCBIData(selectedCategory);
+  }, [selectedCategory]);
 
   const handleSearch = async () => {
-    await fetchNCBIData();
+    await fetchNASAData(selectedCategory);
+    await fetchNCBIData(selectedCategory);
   };
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
+    toast.info(`Fetching ${category || 'all'} data...`);
   };
 
   const getFilteredData = () => {
