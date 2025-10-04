@@ -199,8 +199,8 @@ export default function AIAssistant() {
                 </CardTitle>
               </CardHeader>
             
-            <CardContent className="flex-1 flex flex-col p-0">
-              <ScrollArea className="flex-1 p-6" ref={scrollAreaRef}>
+            <CardContent className="flex-1 flex flex-col p-0 min-h-0">
+              <ScrollArea className="flex-1 p-6 h-full" ref={scrollAreaRef}>
                 <div className="space-y-4">
                   {messages.map((message) => (
                     <div
@@ -208,19 +208,19 @@ export default function AIAssistant() {
                       className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div className={`flex gap-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                           message.role === 'user' 
                             ? 'bg-neon-magenta text-background' 
                             : 'bg-neon-cyan text-background'
                         }`}>
                           {message.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                         </div>
-                        <div className={`rounded-lg p-4 ${
+                        <div className={`rounded-lg p-4 break-words overflow-wrap-anywhere ${
                           message.role === 'user'
                             ? 'bg-neon-magenta/20 border border-neon-magenta/30'
                             : 'bg-holo-base border border-holo-border'
                         }`}>
-                          <p className="font-exo text-foreground whitespace-pre-wrap">
+                          <p className="font-exo text-foreground whitespace-pre-wrap break-words">
                             {message.content}
                           </p>
                           <span className="text-xs text-foreground/50 mt-2 block">
